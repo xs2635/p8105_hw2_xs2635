@@ -193,3 +193,156 @@ combine_trash |>
 the total number of cigarette butts collected by Gwynnda is 18120
 
 ## Problem 3
+
+```{r}
+baseline_raw =
+  read_csv(
+    "data/MCI_baseline.csv",
+    skip = 1,
+    na = c("", ".", "NA")
+  ) |>
+  janitor::clean_names() |>
+  rename(baseline_age = current_age)
+
+dim(baseline_raw)
+head(baseline_raw)
+```
+
+```{r}
+baseline_df =
+  baseline_raw |>
+  mutate(
+    sex = case_match(
+      sex,
+      0 ~ "Female",
+      1 ~ "Male"
+    ),
+    apoe4 = case_match(
+      apoe4,
+      0 ~ "Non-carrier",
+      1 ~ "Carrier"
+    )
+  )
+
+head(baseline_df)
+```
+
+```{r}
+baseline_df =
+  baseline_df |>
+  filter(
+    is.na(age_at_onset) | age_at_onset > baseline_age
+  )
+
+dim(baseline_df)
+```
+Here I skip the description row, treat "." as missing, clean the column names, and renam current_age to baseline_age. I also recode sex and APOE4 status as text and exclude the participants with MCI at baseline. The cleaned data contain 479 participants and 6 variables.
+
+```{r}
+nrow(baseline_raw)
+```
+```{r}
+baseline_df |>
+  filter(!is.na(age_at_onset)) |>
+  nrow()
+```
+The baseline dataset contains 483 recruited participants. After excluding 4 participants with MCI at baseline, 479 remain eligible, and 93 of these developed MCI during follow-up.
+
+```{r}
+baseline_df |>
+  pull(baseline_age) |>
+  mean()
+```
+
+The average baseline age among eligible participants is 65 years.
+
+```{r}
+baseline_df |>
+  filter(sex == "Female") |>
+  pull(apoe4) |>
+  { \(x) mean(x == "Carrier") }()
+```
+30% of the women in the study are APOE4 carriers 
+
+```{r}
+amyloid_raw =
+  read_csv(
+    "data/mci_amyloid.csv",
+    skip = 1,
+    na = c("", "NA", "Na")
+  ) |>
+  janitor::clean_names() |>
+  rename(id = study_id)
+
+dim(amyloid_raw)
+head(amyloid_raw)
+```
+```{r}
+amyloid_tidy =
+  amyloid_raw |>
+  pivot_longer(
+    baseline:time_8,
+    names_to = "time",
+    values_to = "amyloid_ratio"
+  )
+
+dim(amyloid_tidy)
+head(amyloid_tidy)
+```
+```{r}
+amyloid_tidy =
+  amyloid_tidy |>
+  mutate(
+    time = case_match(
+      time,
+      "baseline" ~ 0,
+      "time_2" ~ 2,
+      "time_4" ~ 4,
+      "time_6" ~ 6,
+      "time_8" ~ 8
+    )
+  )
+
+head(amyloid_tidy)
+```
+I skip the description row, treat "NA" and "Na" as missing, and clean the column names. Then I reshape the five measurement columns into time and amyloid_ratio, coding time as years since baseline. Now the tidy data contain 487 participants and 2,435 rows.
+
+```{r}
+baseline_only =
+  anti_join(baseline_df, amyloid_raw, by = "id")
+
+baseline_only |>
+  select(id)
+
+nrow(baseline_only)
+```
+8 eligible participants are in the baseline dataset but not in the amyloid dataset
+
+# check
+```{r}
+amyloid_only =
+  anti_join(amyloid_raw, baseline_df, by = "id")
+
+amyloid_only |>
+  select(id)
+
+nrow(amyloid_only)
+```
+16 participants are in the amyloid dataset but not in the eligible baseline dataset
+
+# combine
+```{r}
+mci_combine =
+  inner_join(baseline_df, amyloid_tidy, by = "id")
+
+dim(mci_combine)
+
+mci_combine |>
+  distinct(id) |>
+  nrow()
+```
+The combined dataset contains 471 eligible participants, 2,355 rows, and 8 variables.
+
+```{r}
+write_csv(mci_combine, "data/mci_combine.csv")
+```
