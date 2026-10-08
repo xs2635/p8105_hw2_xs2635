@@ -107,4 +107,89 @@ Of the stations that serve the A train, 17 are ADA compliant.
 
 ## Problem 2
 
+```{r}
+mr_trash =
+  readxl::read_excel(
+    "data/202610 Trash Wheel Collection Data.xlsx",
+    sheet = "Mr. Trash Wheel",
+    range = "A2:N742"
+  ) |>
+  janitor::clean_names() |>
+  filter(!is.na(dumpster)) |>
+  mutate(
+    sports_balls = as.integer(round(sports_balls)),
+    year = as.integer(year),
+    wheel = "Mr. Trash Wheel"
+  )
+
+dim(mr_trash)
+head(mr_trash)
+```
+
+```{r}
+professor_trash =
+  readxl::read_excel(
+    "data/202610 Trash Wheel Collection Data.xlsx",
+    sheet = "Professor Trash Wheel",
+    na = "dive",  ## Treat the non-numeric bottle count as missing
+    range = "A2:M139"
+  ) |>
+  janitor::clean_names() |>
+  filter(!is.na(dumpster)) |>
+  mutate(
+    year = as.integer(year),
+    wheel = "Professor Trash Wheel"
+  )
+
+dim(professor_trash)
+head(professor_trash)
+```
+```{r}
+gwynnda_trash =
+  readxl::read_excel(
+    "data/202610 Trash Wheel Collection Data.xlsx",
+    sheet = "Gwynnda the Good Wheel of the W",
+    range = "A2:L394"
+  ) |>
+  janitor::clean_names() |>
+  filter(!is.na(dumpster)) |>
+  mutate(
+    year = as.integer(year),
+    wheel = "Gwynnda"
+  )
+
+dim(gwynnda_trash)
+head(gwynnda_trash)
+```
+```{r combine}
+combine_trash =
+  bind_rows(mr_trash, professor_trash, gwynnda_trash)
+
+dim(combine_trash)
+head(combine_trash)
+```
+
+The combined dataset contains 1,269 observations and 15 variables, from Mr. Trash Wheel, Professor Trash Wheel, and Gwynnda. Each observation represents one dumpster collection. Key variables are collection date, trash weight in tons, trash volume in cubic yards, and counts of plastic bottles and cigarette butts.
+
+```{r}
+combine_trash |>
+  filter(wheel == "Professor Trash Wheel") |>
+  pull(weight_tons) |>
+  sum(na.rm = TRUE)
+```
+The total weight of trash collected by Professor Trash Wheel is 294.96 tons based on the available data.
+
+```{r}
+combine_trash |>
+  filter(
+    wheel == "Gwynnda",
+    year == 2022,
+    month == "June"
+  ) |>
+  pull(cigarette_butts) |>
+  sum(na.rm = TRUE)
+```
+
+the total number of cigarette butts collected by Gwynnda is 18120
+
 ## Problem 3
